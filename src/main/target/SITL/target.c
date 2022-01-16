@@ -75,6 +75,7 @@ static udpLink_t stateLink, pwmLink, pwmRawLink, rcLink;
 static pthread_mutex_t updateLock;
 static pthread_mutex_t mainLoopLock;
 extern rxRuntimeState_t rxRuntimeState;
+static char simulator_ip[1024] = "127.0.0.1";
 
 int timeval_sub(struct timespec *result, struct timespec *x, struct timespec *y);
 
@@ -86,9 +87,6 @@ int lockMainPID(void) {
 #define ACC_SCALE (256 / 9.80665)
 #define GYRO_SCALE (16.4)
 
-//#define SIMULATOR_IP "127.0.0.1"
-#define SIMULATOR_IP "172.21.32.1"
-#define SIMULATOR_GAZEBO_IP "127.0.0.1"
 #define PORT_OUT_PWM_RAW 9001
 #define PORT_OUT_PWM 9002
 #define PORT_IN_STATE 9003
@@ -97,6 +95,18 @@ int lockMainPID(void) {
 void sendMotorUpdate() {
     udpSend(&pwmLink, &pwmPkt, sizeof(servo_packet));
 }
+
+int sitl_parse_argc(int argc, char * argv[]) {
+    //The first argument should be target IP.
+    if (argc > 1) {
+        strcpy(simulator_ip, argv[1]);
+    }
+
+    printf("The SITL will output to IP %s:%d (Gazebo) and %s:%d (RealFlightBridge)\n", 
+            simulator_ip, PORT_OUT_PWM, simulator_ip, PORT_OUT_PWM_RAW);
+    return 0;
+}
+
 void updateState(const fdm_packet* pkt) {
     static double last_timestamp = 0; // in seconds
     static uint64_t last_realtime = 0; // in uS
@@ -197,7 +207,7 @@ static void* udpThread(void* data) {
         n = udpRecv(&stateLink, &fdmPkt, sizeof(fdm_packet), 100);
         if (n == sizeof(fdm_packet)) {
             if (!fdm_received) {
-                printf("[data]new fdm %d t:%f from %s:%d", n, fdmPkt.timestamp, inet_ntoa(stateLink.recv.sin_addr), stateLink.recv.sin_port);
+                printf("[data]new fdm %d t:%f from %s:%d\n", n, fdmPkt.timestamp, inet_ntoa(stateLink.recv.sin_addr), stateLink.recv.sin_port);
                 fdm_received = true;
                 // pwmLink.si.sin_addr = stateLink.recv.sin_addr;
             }
@@ -291,17 +301,17 @@ void systemInit(void) {
         exit(1);
     }
 
-    ret = udpInit(&pwmLink, SIMULATOR_GAZEBO_IP, PORT_OUT_PWM, false);
-    printf("init PwmOut UDP link to gazebo %s:%d...%d\n", SIMULATOR_GAZEBO_IP, PORT_OUT_PWM, ret);
+    ret = udpInit(&pwmLink, simulator_ip, PORT_OUT_PWM, false);
+    printf("init PwmOut UDP link to gazebo %s:%d...%d\n", simulator_ip, PORT_OUT_PWM, ret);
 
-    ret = udpInit(&pwmRawLink, SIMULATOR_IP, PORT_OUT_PWM_RAW, false);
-    printf("init PwmOut UDP link to RF9 %s:%d...%d\n", SIMULATOR_IP, PORT_OUT_PWM_RAW, ret);
+    ret = udpInit(&pwmRawLink, simulator_ip, PORT_OUT_PWM_RAW, false);
+    printf("init PwmOut UDP link to RF9 %s:%d...%d\n", simulator_ip, PORT_OUT_PWM_RAW, ret);
 
     ret = udpInit(&stateLink, NULL, PORT_IN_STATE, true);
     printf("start UDP server @%d...%d\n", PORT_IN_STATE, ret);
 
     ret = udpInit(&rcLink, NULL, PORT_IN_RC, true);
-    printf("start UDP server for RC @%d...%d\n", PORT_IN_RC, ret);
+    printf("start UDP server for RC input @%d...%d\n", PORT_IN_RC, ret);
 
     ret = pthread_create(&udpWorker, NULL, udpThread, NULL);
     ret = pthread_create(&udpWorkerRC, NULL, udpRCThread, NULL);
