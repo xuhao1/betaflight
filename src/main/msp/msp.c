@@ -216,10 +216,12 @@ mspDescriptor_t mspDescriptorAlloc(void)
 
 static uint32_t mspArmingDisableFlags = 0;
 
+#ifndef SIMULATOR_MULTITHREAD
 static void mspArmingDisableByDescriptor(mspDescriptor_t desc)
 {
     mspArmingDisableFlags |= (1 << desc);
 }
+#endif
 
 static void mspArmingEnableByDescriptor(mspDescriptor_t desc)
 {

@@ -214,7 +214,7 @@ void resetArmingDisabled(void)
     lastArmingDisabledReason = 0;
 }
 
-#ifdef USE_ACC
+#if defined(USE_ACC) && !defined(SIMULATOR_MULTITHREAD)
 static bool accNeedsCalibration(void)
 {
     if (sensors(SENSOR_ACC)) {
