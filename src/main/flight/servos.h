@@ -65,10 +65,14 @@ typedef enum {
     SERVO_SINGLECOPTER_3 = 5,
     SERVO_SINGLECOPTER_4 = 6,
 
-    SERVO_HELI_LEFT = 0,
+    SERVO_HELI_LEFT = 0, //Mixer for H-3 120 swash.
     SERVO_HELI_RIGHT = 1,
     SERVO_HELI_TOP = 2,
-    SERVO_HELI_RUD = 3
+    SERVO_HELI_RUD = 3,
+
+    SERVO_HELIH1_ROLL = 0, //Mixer for H-1 swash.
+    SERVO_HELIH1_PITCH = 1,
+    SERVO_HELIH1_COLL = 2,
 
 } servoIndex_e; // FIXME rename to servoChannel_e
 

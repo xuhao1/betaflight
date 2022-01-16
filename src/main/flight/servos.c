@@ -144,7 +144,7 @@ static const servoMixer_t servoMixerSingle[] = {
     { SERVO_SINGLECOPTER_4, INPUT_STABILIZED_ROLL,  100, 0, 0, 100, 0 },
 };
 
-static const servoMixer_t servoMixerHeli[] = {
+static const servoMixer_t servoMixerHeli[] = { //Mixer for H-3 120 swash.
     { SERVO_HELI_LEFT, INPUT_STABILIZED_PITCH,   -50, 0, 0, 100, 0 },
     { SERVO_HELI_LEFT, INPUT_STABILIZED_ROLL,    -87, 0, 0, 100, 0 },
     { SERVO_HELI_LEFT, INPUT_RC_AUX1,    100, 0, 0, 100, 0 },
@@ -155,6 +155,14 @@ static const servoMixer_t servoMixerHeli[] = {
     { SERVO_HELI_TOP, INPUT_RC_AUX1,    100, 0, 0, 100, 0 },
     { SERVO_HELI_RUD, INPUT_STABILIZED_YAW, 100, 0, 0, 100, 0 },
 };
+
+static const servoMixer_t servoMixerHeliH1[] = { //Mixer for H-1 swash.
+    { SERVO_HELIH1_ROLL, INPUT_STABILIZED_ROLL,    100, 0, 0, 100, 0 },
+    { SERVO_HELIH1_PITCH, INPUT_STABILIZED_PITCH,   100, 0, 0, 100, 0 },
+    { SERVO_HELIH1_COLL, INPUT_RC_AUX3,    100, 0, 0, 100, 0 }, // Colletive
+    { SERVO_HELI_RUD, INPUT_STABILIZED_YAW,    100, 0, 0, 100, 0 },
+};
+
 #else
 #define servoMixerBI NULL
 #define servoMixerDual NULL
@@ -184,7 +192,7 @@ const mixerRules_t servoMixers[] = {
     { 0, NULL },                // MULTITYPE_OCTOFLATX
     { COUNT_SERVO_RULES(servoMixerAirplane), servoMixerAirplane },  // * MULTITYPE_AIRPLANE
     { COUNT_SERVO_RULES(servoMixerHeli), servoMixerHeli },                // * MULTITYPE_HELI_120_CCPM
-    { 0, NULL },                // * MULTITYPE_HELI_90_DEG
+    { COUNT_SERVO_RULES(servoMixerHeli), servoMixerHeliH1 },                // * MULTITYPE_HELI_90_DEG
     { 0, NULL },                // MULTITYPE_VTAIL4
     { 0, NULL },                // MULTITYPE_HEX6H
     { 0, NULL },                // * MULTITYPE_PPM_TO_SERVO
@@ -363,6 +371,13 @@ void writeServos(void)
         writeServoWithTracking(servoIndex++, SERVO_HELI_RUD);
         break;
 
+    case MIXER_HELI_90_DEG:
+        writeServoWithTracking(servoIndex++, SERVO_HELIH1_ROLL);
+        writeServoWithTracking(servoIndex++, SERVO_HELIH1_PITCH);
+        writeServoWithTracking(servoIndex++, SERVO_HELIH1_COLL);
+        writeServoWithTracking(servoIndex++, SERVO_HELI_RUD);
+        break;
+
     case MIXER_DUALCOPTER:
         writeServoWithTracking(servoIndex++, SERVO_DUALCOPTER_LEFT);
         writeServoWithTracking(servoIndex++, SERVO_DUALCOPTER_RIGHT);
@@ -493,6 +508,7 @@ static void servoTable(void)
     case MIXER_DUALCOPTER:
     case MIXER_SINGLECOPTER:
     case MIXER_HELI_120_CCPM:
+    case MIXER_HELI_90_DEG:
     case MIXER_GIMBAL:
         servoMixer();
         break;
