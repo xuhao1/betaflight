@@ -274,4 +274,4 @@ uint64_t millis64(void);
 
 int lockMainPID(void);
 
-
+int sitl_parse_argc(int argc, char * argv[]);
