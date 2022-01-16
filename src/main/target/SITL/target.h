@@ -222,7 +222,7 @@ typedef struct
 #define UART8 ((USART_TypeDef *)0x0008)
 
 #define SIMULATOR_MAX_RC_CHANNELS 16
-#define SIMULATOR_MAX_PWM_CHANNELS 8
+#define SIMULATOR_MAX_PWM_CHANNELS 16
 
 typedef struct
 {
@@ -257,6 +257,7 @@ typedef struct {
 } servo_packet;
 
 typedef struct {
+    uint16_t motorCount; //Count of motor in the PWM output.
     float pwm_output_raw[SIMULATOR_MAX_PWM_CHANNELS];   // Raw PWM from 1100 to 1900
 } servo_packet_raw;
 
