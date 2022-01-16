@@ -471,7 +471,9 @@ void disarm(flightLogDisarmReason_e reason)
             statsOnDisarm();
         }
 #endif
-
+#ifdef SIMULATOR_MULTITHREAD
+        printf("[SITL] Disarmed\n");
+#endif
         flipOverAfterCrashActive = false;
 
         // if ARMING_DISABLED_RUNAWAY_TAKEOFF is set then we want to play it's beep pattern instead
@@ -581,6 +583,10 @@ void tryArm(void)
 
 #ifdef USE_PERSISTENT_STATS
         statsOnArm();
+#endif
+
+#ifdef SIMULATOR_MULTITHREAD
+        printf("[SITL] Armed\n");
 #endif
 
 #ifdef USE_RUNAWAY_TAKEOFF

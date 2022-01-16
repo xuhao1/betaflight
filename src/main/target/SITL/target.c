@@ -102,7 +102,7 @@ int sitl_parse_argc(int argc, char * argv[]) {
         strcpy(simulator_ip, argv[1]);
     }
 
-    printf("The SITL will output to IP %s:%d (Gazebo) and %s:%d (RealFlightBridge)\n", 
+    printf("[SITL] The SITL will output to IP %s:%d (Gazebo) and %s:%d (RealFlightBridge)\n", 
             simulator_ip, PORT_OUT_PWM, simulator_ip, PORT_OUT_PWM_RAW);
     return 0;
 }
@@ -207,7 +207,7 @@ static void* udpThread(void* data) {
         n = udpRecv(&stateLink, &fdmPkt, sizeof(fdm_packet), 100);
         if (n == sizeof(fdm_packet)) {
             if (!fdm_received) {
-                printf("[data]new fdm %d t:%f from %s:%d\n", n, fdmPkt.timestamp, inet_ntoa(stateLink.recv.sin_addr), stateLink.recv.sin_port);
+                printf("[SITL] new fdm %d t:%f from %s:%d\n", n, fdmPkt.timestamp, inet_ntoa(stateLink.recv.sin_addr), stateLink.recv.sin_port);
                 fdm_received = true;
                 // pwmLink.si.sin_addr = stateLink.recv.sin_addr;
             }
@@ -215,7 +215,7 @@ static void* udpThread(void* data) {
         }
     }
 
-    printf("udpThread end!!\n");
+    printf("[SITL] udpThread end!!\n");
     return NULL;
 }
 
@@ -239,7 +239,7 @@ static void* udpRCThread(void* data) {
         n = udpRecv(&rcLink, &rcPkt, sizeof(rc_packet), 100);
         if (n == sizeof(rc_packet)) {
             if (!rc_received) {
-                printf("[data]new rc %d: t:%f AETR: %d %d %d %d AUX1-4: %d %d %d %d\n", n, rcPkt.timestamp,
+                printf("[SITL] new rc %d: t:%f AETR: %d %d %d %d AUX1-4: %d %d %d %d\n", n, rcPkt.timestamp,
                     rcPkt.channels[0], rcPkt.channels[1],rcPkt.channels[2],rcPkt.channels[3],
                     rcPkt.channels[4], rcPkt.channels[5],rcPkt.channels[6],rcPkt.channels[7]);
                 
@@ -281,49 +281,49 @@ void systemInit(void) {
     int ret;
 
     clock_gettime(CLOCK_MONOTONIC, &start_time);
-    printf("[system]Init...\n");
+    printf("[SITL][system]Init...\n");
 
     SystemCoreClock = 500 * 1e6; // fake 500MHz
 
     if (pthread_mutex_init(&updateLock, NULL) != 0) {
-        printf("Create updateLock error!\n");
+        printf("[SITL] Create updateLock error!\n");
         exit(1);
     }
 
     if (pthread_mutex_init(&mainLoopLock, NULL) != 0) {
-        printf("Create mainLoopLock error!\n");
+        printf("[SITL] Create mainLoopLock error!\n");
         exit(1);
     }
 
     ret = pthread_create(&tcpWorker, NULL, tcpThread, NULL);
     if (ret != 0) {
-        printf("Create tcpWorker error!\n");
+        printf("[SITL] Create tcpWorker error!\n");
         exit(1);
     }
 
     ret = udpInit(&pwmLink, simulator_ip, PORT_OUT_PWM, false);
-    printf("init PwmOut UDP link to gazebo %s:%d...%d\n", simulator_ip, PORT_OUT_PWM, ret);
+    printf("[SITL] init PwmOut UDP link to gazebo %s:%d...%d\n", simulator_ip, PORT_OUT_PWM, ret);
 
     ret = udpInit(&pwmRawLink, simulator_ip, PORT_OUT_PWM_RAW, false);
-    printf("init PwmOut UDP link to RF9 %s:%d...%d\n", simulator_ip, PORT_OUT_PWM_RAW, ret);
+    printf("[SITL] init PwmOut UDP link to RF9 %s:%d...%d\n", simulator_ip, PORT_OUT_PWM_RAW, ret);
 
     ret = udpInit(&stateLink, NULL, PORT_IN_STATE, true);
-    printf("start UDP server @%d...%d\n", PORT_IN_STATE, ret);
+    printf("[SITL] start UDP server @%d...%d\n", PORT_IN_STATE, ret);
 
     ret = udpInit(&rcLink, NULL, PORT_IN_RC, true);
-    printf("start UDP server for RC input @%d...%d\n", PORT_IN_RC, ret);
+    printf("[SITL] start UDP server for RC input @%d...%d\n", PORT_IN_RC, ret);
 
     ret = pthread_create(&udpWorker, NULL, udpThread, NULL);
     ret = pthread_create(&udpWorkerRC, NULL, udpRCThread, NULL);
     if (ret != 0) {
-        printf("Create udpWorker error!\n");
+        printf("[SITL] Create udpWorker error!\n");
         exit(1);
     }
 
 }
 
 void systemReset(void){
-    printf("[system]Reset!\n");
+    printf("[SITL][system]Reset!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
     pthread_join(udpWorker, NULL);
@@ -332,7 +332,7 @@ void systemReset(void){
 void systemResetToBootloader(bootloaderRequestType_e requestType) {
     UNUSED(requestType);
 
-    printf("[system]ResetToBootloader!\n");
+    printf("[SITL][system]ResetToBootloader!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);
     pthread_join(udpWorker, NULL);
@@ -340,21 +340,21 @@ void systemResetToBootloader(bootloaderRequestType_e requestType) {
 }
 
 void timerInit(void) {
-    printf("[timer]Init...\n");
+    printf("[SITL][timer]Init...\n");
 }
 
 void timerStart(void) {
 }
 
 void failureMode(failureMode_e mode) {
-    printf("[failureMode]!!! %d\n", mode);
+    printf("[SITL][failureMode]!!! %d\n", mode);
     while (1);
 }
 
 void indicateFailure(failureMode_e mode, int repeatCount)
 {
     UNUSED(repeatCount);
-    printf("Failure LED flash for: [failureMode]!!! %d\n", mode);
+    printf("[SITL]Failure LED flash for: [failureMode]!!! %d\n", mode);
 }
 
 // Time part
