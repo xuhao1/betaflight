@@ -484,6 +484,8 @@ static int16_t servosPwm[MAX_SUPPORTED_SERVOS];
 static int16_t idlePulse;
 
 void servoDevInit(const servoDevConfig_t *servoConfig) {
+    printf("[SITL] Init servos num %d rate %d center %d\n", MAX_SUPPORTED_SERVOS, 
+            servoConfig->servoPwmRate, servoConfig->servoCenterPulse);
     UNUSED(servoConfig);
     for (uint8_t servoIndex = 0; servoIndex < MAX_SUPPORTED_SERVOS; servoIndex++) {
         servos[servoIndex].enabled = true;
@@ -520,8 +522,13 @@ static bool pwmEnableMotors(void)
 
 static void pwmWriteMotor(uint8_t index, float value)
 {
-    motorsPwm[index] = value - idlePulse;
-    pwmRawPkt.pwm_output_raw[index] = value;
+    if (index < 4) {
+        motorsPwm[index] = value - idlePulse;
+    }
+
+    if (index < pwmRawPkt.motorCount) {
+        pwmRawPkt.pwm_output_raw[index] = value;
+    }
 }
 
 static void pwmWriteMotorInt(uint8_t index, uint16_t value)
@@ -563,6 +570,9 @@ static void pwmCompleteMotorUpdate(void)
 
 void pwmWriteServo(uint8_t index, float value) {
     servosPwm[index] = value;
+    if (index + pwmRawPkt.motorCount < SIMULATOR_MAX_PWM_CHANNELS) {
+        pwmRawPkt.pwm_output_raw[index + pwmRawPkt.motorCount] = value; // In pwmRawPkt, we put servo right after the motors.
+    }
 }
 
 static motorDevice_t motorPwmDevice = {
@@ -586,9 +596,9 @@ motorDevice_t *motorPwmDevInit(const motorDevConfig_t *motorConfig, uint16_t _id
     UNUSED(motorConfig);
     UNUSED(useUnsyncedPwm);
 
-    if (motorCount > 4) {
-        return NULL;
-    }
+    printf("[SITL] Initialized motor count %d\n", motorCount);
+
+    pwmRawPkt.motorCount = motorCount;
 
     idlePulse = _idlePulse;
 
