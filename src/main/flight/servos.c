@@ -144,7 +144,7 @@ static const servoMixer_t servoMixerSingle[] = {
     { SERVO_SINGLECOPTER_4, INPUT_STABILIZED_ROLL,  100, 0, 0, 100, 0 },
 };
 
-static const servoMixer_t servoMixerHeli[] = {
+static const servoMixer_t servoMixerHeli[] = { //Mixer for H-3 120 swash.
     { SERVO_HELI_LEFT, INPUT_STABILIZED_PITCH,   -50, 0, 0, 100, 0 },
     { SERVO_HELI_LEFT, INPUT_STABILIZED_ROLL,    -87, 0, 0, 100, 0 },
     { SERVO_HELI_LEFT, INPUT_RC_AUX1,    100, 0, 0, 100, 0 },
@@ -155,6 +155,15 @@ static const servoMixer_t servoMixerHeli[] = {
     { SERVO_HELI_TOP, INPUT_RC_AUX1,    100, 0, 0, 100, 0 },
     { SERVO_HELI_RUD, INPUT_STABILIZED_YAW, 100, 0, 0, 100, 0 },
 };
+
+static const servoMixer_t servoMixerHeliH1[] = { //Mixer for H-1 swash.
+    { SERVO_HELIH1_ROLL, INPUT_STABILIZED_ROLL,    100, 0, 0, 100, 0 },
+    { SERVO_HELIH1_PITCH, INPUT_STABILIZED_PITCH,   100, 0, 0, 100, 0 },
+    { SERVO_HELIH1_COLL, INPUT_HELI_COLLECTIVE,    100, 0, 0, 100, 0 }, // Colletive should exact corresponding to throttle input.
+    { SERVO_HELI_RUD, INPUT_STABILIZED_YAW,    100, 0, 0, 100, 0 },
+    { SERVO_HELI_THROTTLE, INPUT_STABILIZED_THROTTLE,    100, 0, 0, 100, 0 },
+};
+
 #else
 #define servoMixerBI NULL
 #define servoMixerDual NULL
@@ -184,7 +193,7 @@ const mixerRules_t servoMixers[] = {
     { 0, NULL },                // MULTITYPE_OCTOFLATX
     { COUNT_SERVO_RULES(servoMixerAirplane), servoMixerAirplane },  // * MULTITYPE_AIRPLANE
     { COUNT_SERVO_RULES(servoMixerHeli), servoMixerHeli },                // * MULTITYPE_HELI_120_CCPM
-    { 0, NULL },                // * MULTITYPE_HELI_90_DEG
+    { COUNT_SERVO_RULES(servoMixerHeliH1), servoMixerHeliH1 },                // * MULTITYPE_HELI_90_DEG
     { 0, NULL },                // MULTITYPE_VTAIL4
     { 0, NULL },                // MULTITYPE_HEX6H
     { 0, NULL },                // * MULTITYPE_PPM_TO_SERVO
@@ -363,6 +372,14 @@ void writeServos(void)
         writeServoWithTracking(servoIndex++, SERVO_HELI_RUD);
         break;
 
+    case MIXER_HELI_90_DEG:
+        writeServoWithTracking(servoIndex++, SERVO_HELIH1_ROLL);
+        writeServoWithTracking(servoIndex++, SERVO_HELIH1_PITCH);
+        writeServoWithTracking(servoIndex++, SERVO_HELIH1_COLL);
+        writeServoWithTracking(servoIndex++, SERVO_HELI_RUD);
+        writeServoWithTracking(servoIndex++, SERVO_HELI_THROTTLE);
+        break;
+
     case MIXER_DUALCOPTER:
         writeServoWithTracking(servoIndex++, SERVO_DUALCOPTER_LEFT);
         writeServoWithTracking(servoIndex++, SERVO_DUALCOPTER_RIGHT);
@@ -426,6 +443,7 @@ void servoMixer(void)
     input[INPUT_GIMBAL_ROLL] = scaleRange(attitude.values.roll, -1800, 1800, -500, +500);
 
     input[INPUT_STABILIZED_THROTTLE] = motor[0] - 1000 - 500;  // Since it derives from rcCommand or mincommand and must be [-500:+500]
+    input[INPUT_HELI_COLLECTIVE] = heliMixerState.collective  - 1000 - 500;
 
     // center the RC input value around the RC middle value
     // by subtracting the RC middle value from the RC input value, we get:
@@ -493,6 +511,7 @@ static void servoTable(void)
     case MIXER_DUALCOPTER:
     case MIXER_SINGLECOPTER:
     case MIXER_HELI_120_CCPM:
+    case MIXER_HELI_90_DEG:
     case MIXER_GIMBAL:
         servoMixer();
         break;

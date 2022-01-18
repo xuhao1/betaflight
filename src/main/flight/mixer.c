@@ -104,6 +104,7 @@ static FAST_DATA_ZERO_INIT float motorRangeMin;
 static FAST_DATA_ZERO_INIT float motorRangeMax;
 static FAST_DATA_ZERO_INIT float motorOutputRange;
 static FAST_DATA_ZERO_INIT int8_t motorOutputMixSign;
+heliMixerState_t heliMixerState;
 
 static void calculateThrottleAndCurrentMotorEndpoints(timeUs_t currentTimeUs)
 {
@@ -468,8 +469,88 @@ static void applyMixerAdjustment(float *motorMix, const float motorMixMin, const
 #endif
 }
 
+FAST_CODE_NOINLINE void mixTableHeli(timeUs_t currentTimeUs)
+{
+    UNUSED(currentTimeUs);
+    //CCPM helicopter throttle control is different from multirotor.
+    //It use collective to control the thrust and rotor speed of the rotor should be fixed most of the time.
+    //We use fixed throttle for helicopter after armed.
+    throttle = 0.75;
+
+    float collective = rcCommand[THROTTLE]  - PWM_RANGE_MIN + throttleAngleCorrection; //Collective need corrections, not the throttle
+    collective = constrainf(collective / PWM_RANGE, 0.0f, 1.0f);
+
+#if defined(USE_THROTTLE_BOOST)
+    if (throttleBoost > 0.0f) {
+        const float collectiveHpf = collective - pt1FilterApply(&throttleLpf, collective);
+        collective = constrainf(collective + throttleBoost * collectiveHpf, 0.0f, 1.0f);
+    }
+#endif
+    heliMixerState.collective = PWM_RANGE_MIN + PWM_RANGE * collective;
+
+    motorOutputMin = motorRangeMin = mixerRuntime.motorOutputLow;
+    motorRangeMax = mixerRuntime.motorOutputHigh;
+    motorOutputRange = motorRangeMax - motorRangeMin;
+    motorOutputMixSign = 1;
+
+
+    //We still need mixer here as for some of helicopters uses a motor for tail control.
+    uint16_t yawPidSumLimit = currentPidProfile->pidSumLimitYaw;
+    float scaledAxisPidYaw =
+            constrainf(pidData[FD_YAW].Sum, -yawPidSumLimit, yawPidSumLimit) / PID_MIXER_SCALING;
+    if (!mixerConfig()->yaw_motors_reversed) {
+        scaledAxisPidYaw = -scaledAxisPidYaw;
+    }
+    motorMixer_t * activeMixer = &mixerRuntime.currentMixer[0];
+
+
+    float motorMix[MAX_SUPPORTED_MOTORS];
+    float motorMixMax = 0, motorMixMin = 0;
+    for (int i = 0; i < mixerRuntime.motorCount; i++) {
+        float mix = scaledAxisPidYaw   * activeMixer[i].yaw;
+        if (mix > motorMixMax) {
+            motorMixMax = mix;
+        } else if (mix < motorMixMin) {
+            motorMixMin = mix;
+        }
+        motorMix[i] = mix;
+    }
+
+    for (int i = 0; i < mixerRuntime.motorCount; i++) {
+        float motorOutput = motorOutputMixSign * motorMix[i] + throttle * activeMixer[i].throttle;
+        motorOutput = motorOutputMin + motorOutputRange * motorOutput;
+
+        if (failsafeIsActive()) {
+#ifdef USE_DSHOT
+            if (isMotorProtocolDshot()) {
+                motorOutput = (motorOutput < motorRangeMin) ? mixerRuntime.disarmMotorOutput : motorOutput; // Prevent getting into special reserved range
+            }
+#endif
+            motorOutput = constrainf(motorOutput, mixerRuntime.disarmMotorOutput, motorRangeMax);
+        } else {
+            motorOutput = constrainf(motorOutput, motorRangeMin, motorRangeMax);
+        }
+        motor[i] = motorOutput;
+    }
+
+    // Disarmed mode
+    if (!ARMING_FLAG(ARMED)) {
+        for (int i = 0; i < mixerRuntime.motorCount; i++) {
+            motor[i] = motor_disarmed[i];
+        }
+    }
+}
+
+
 FAST_CODE_NOINLINE void mixTable(timeUs_t currentTimeUs)
 {
+    if (mixerConfigMutable()->mixerMode == MIXER_HELI_120_CCPM 
+        || mixerConfigMutable()->mixerMode == MIXER_HELI_90_DEG)
+    {
+        //Heli mixTable
+        mixTableHeli(currentTimeUs);
+        return;
+    }
     // Find min and max throttle based on conditions. Throttle has to be known before mixing
     calculateThrottleAndCurrentMotorEndpoints(currentTimeUs);
 

@@ -92,7 +92,12 @@ typedef struct mixerConfig_s {
     uint8_t mixer_type;
 } mixerConfig_t;
 
+typedef struct heliMixerState_s {
+    float collective;
+} heliMixerState_t;
+
 PG_DECLARE(mixerConfig_t, mixerConfig);
+extern heliMixerState_t heliMixerState;
 
 #define CHANNEL_FORWARDING_DISABLED (uint8_t)0xFF
 
